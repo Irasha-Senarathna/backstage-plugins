@@ -189,6 +189,7 @@ export type ChatScope = {
    * request needs a fact none of the selected ones provide.
    */
   selectedFactIds?: string[];
+  
 };
 
 export type ChatRequest = {
