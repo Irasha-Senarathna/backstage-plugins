@@ -411,6 +411,12 @@ techInsights:
       cadence: '*/5 * * * *'
       initialDelay: { seconds: 20 }
       lifecycle: { timeToLive: { days: 1 } }
+
+    githubCodeScanningFactRetriever:
+      cadence: '*/5 * * * *'
+      initialDelay: { seconds: 20 }
+      lifecycle: { timeToLive: { days: 1 } }
+  
   # factChecker.checks (titleCheck, descriptionCheck, groupOwnerCheck, techDocsCheck,
   # repoNotArchivedCheck) intentionally removed — checks are now managed via
   # tech-insights-backend-module-dynamic-checks's DB-backed registry instead of
