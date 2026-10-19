@@ -182,7 +182,13 @@ export function CheckForm(props: CheckFormProps) {
       <Grid container spacing={2}>
         {/* About */}
         <Grid item xs={12}>
-          <SectionLabel>About</SectionLabel>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <SectionLabel>About</SectionLabel>
+            <AskPortalAssistantButton
+              factSchemas={factSchemas}
+              factIds={factIds}
+            />
+          </Box>
         </Grid>
         <Grid item xs={12}>
           <TextField
@@ -256,13 +262,7 @@ export function CheckForm(props: CheckFormProps) {
 
         {/* Define the check */}
         <Grid item xs={12}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <SectionLabel>Define the check</SectionLabel>
-            <AskPortalAssistantButton
-              factSchemas={factSchemas}
-              factIds={factIds}
-            />
-          </Box>
+          <SectionLabel>Define the check</SectionLabel>
         </Grid>
         <Grid item xs={12}>
           <Autocomplete

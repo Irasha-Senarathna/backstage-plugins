@@ -17,6 +17,7 @@ import SendIcon from '@material-ui/icons/Send';
 import StopIcon from '@material-ui/icons/Stop';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import AndroidOutlinedIcon from '@material-ui/icons/AndroidOutlined';
+import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import { useApi } from '@backstage/core-plugin-api';
@@ -47,6 +48,68 @@ const ENTITY_TAG_RE = /<(?:comp|proj|env|ns):([^>]+)>/g;
 function stripEntityTags(text: string): string {
   return text.replace(ENTITY_TAG_RE, '`$1`');
 }
+/**
+ * Pulls the structured check object out of a check_authoring reply's
+ * fenced ```json block, so individual fields can get their own copy
+ * button instead of one big blob. Returns null for any other reply
+ * shape (non-JSON, malformed, or no json fence at all) so callers
+ * fall back to the normal markdown rendering.
+ */
+type ParsedCheckSections = {
+  name?: string;
+  description?: string;
+  factRetriever?: string;
+  isSuggestedFactRetriever?: boolean;
+  category?: string;
+  maturityTier?: string;
+  ruleJson?: string;
+};
+
+function extractCheckSections(text: string): ParsedCheckSections | null {
+  const nameMatch = /^Name:\s*(.+)$/m.exec(text);
+  const descMatch = /^Description:\s*(.+)$/m.exec(text);
+  // "Suggested Fact Retriever:" (no retriever selected yet) and
+  // "Fact Retriever:" (one already selected) are mutually exclusive —
+  // see perch_prompt.j2's CHECK AUTHORING "Response format" section.
+  const suggestedRetrieverMatch = /^Suggested Fact Retriever:\s*(.+)$/m.exec(text);
+  const retrieverMatch = /^Fact Retriever:\s*(.+)$/m.exec(text);
+  const categoryMatch = /^Suggested Category:\s*(.+)$/m.exec(text);
+  const tierMatch = /^Suggested Maturity Tier:\s*(.+)$/m.exec(text);
+  const ruleMatch = /```json\s*([\s\S]*?)```/.exec(text);
+  if (
+    !nameMatch &&
+    !descMatch &&
+    !suggestedRetrieverMatch &&
+    !retrieverMatch &&
+    !categoryMatch &&
+    !tierMatch &&
+    !ruleMatch
+  ) {
+    return null;
+  }
+
+  let ruleJson = ruleMatch?.[1]?.trim();
+  if (ruleJson) {
+    try {
+      // Re-serialize with consistent 2-space indentation, regardless of
+      // how compactly the model formatted individual leaf conditions.
+      ruleJson = JSON.stringify(JSON.parse(ruleJson), null, 2);
+    } catch {
+      // Leave as-is if it doesn't parse — still shown, just unformatted.
+    }
+  }
+
+  return {
+    name: nameMatch?.[1]?.trim(),
+    description: descMatch?.[1]?.trim(),
+    factRetriever: (suggestedRetrieverMatch ?? retrieverMatch)?.[1]?.trim(),
+    isSuggestedFactRetriever: !!suggestedRetrieverMatch,
+    category: categoryMatch?.[1]?.trim(),
+    maturityTier: tierMatch?.[1]?.trim(),
+    ruleJson,
+  };
+}
+
 
 // Module-level sentinel — a per-render symbol would never match the previous
 // render's symbol, breaking the conversationKey continuity check.
@@ -248,7 +311,10 @@ export const AssistantChatDrawer = ({
   // has the real tool-call context (logs, error excerpts, repo URL
   // from scope) and produces a far better-targeted prompt than the
   // frontend ever could. We just expose it to the user.
-  const handleCopyPrompt = useCallback(async (prompt: string) => {
+  const handleCopyPrompt = useCallback(async (
+    prompt: string,
+    successMessage = 'Copied — paste into your AI coding assistant',
+  ) => {
     try {
       // Prefer the async Clipboard API (only available on secure
       // contexts — https + localhost). Fall back to the legacy
@@ -280,7 +346,8 @@ export const AssistantChatDrawer = ({
         }
       }
       if (succeeded) {
-        setCopyToast('Copied — paste into your AI coding assistant');
+        setCopyToast(successMessage);
+
       } else {
         setCopyToast('Copy failed — please copy manually');
       }
@@ -489,12 +556,22 @@ export const AssistantChatDrawer = ({
   );
 
   return (
-    <Drawer
+        <Drawer
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{ className: classes.drawerPaper }}
+      PaperProps={{
+        className: classes.drawerPaper,
+        style: { pointerEvents: 'auto' },
+      }}
+      ModalProps={{
+        hideBackdrop: true,
+        disableEnforceFocus: true,
+        disableScrollLock: true,
+        style: { pointerEvents: 'none' },
+      }}
     >
+
       <Box className={classes.header}>
         <Typography variant="subtitle1" className={classes.headerTitle}>
           Portal Assistant
@@ -687,9 +764,90 @@ export const AssistantChatDrawer = ({
               key={`m-${i}`}
               className={`${classes.message} ${classes.assistant}`}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {summary}
-              </ReactMarkdown>
+              {(() => {
+                const parsedCheck =
+                  scope.caseType === 'check_authoring' ? extractCheckSections(normalised) : null;
+                if (!parsedCheck) {
+                  return (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {summary}
+                    </ReactMarkdown>
+                  );
+                }
+                return (
+                  <Box my={1}>
+                    {parsedCheck.name && (
+                      <Box display="flex" alignItems="center" style={{ gap: 2 }}>
+                        <Typography variant="body2">
+                          <strong>Name:</strong> {parsedCheck.name}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          style={{ padding: 2 }}
+                          onClick={() => handleCopyPrompt(parsedCheck.name!, 'Copied — paste into the Name field')}
+                        >
+                          <FileCopyOutlinedIcon style={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Box>
+                    )}
+                    {parsedCheck.description && (
+                      <Box display="flex" alignItems="center" style={{ gap: 2 }}>
+                        <Typography variant="body2">
+                          <strong>Description:</strong> {parsedCheck.description}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          style={{ padding: 2 }}
+                          onClick={() => handleCopyPrompt(parsedCheck.description!, 'Copied — paste into the Description field')}
+                        >
+                          <FileCopyOutlinedIcon style={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Box>
+                    )}
+                    {parsedCheck.factRetriever && (
+                      <Typography variant="body2">
+                        <strong>
+                          {parsedCheck.isSuggestedFactRetriever ? 'Suggested Fact Retriever:' : 'Fact Retriever:'}
+                        </strong>{' '}
+                        {parsedCheck.factRetriever}
+                      </Typography>
+                    )}
+                    {parsedCheck.category && (
+                      <Typography variant="body2">
+                        <strong>Suggested Category:</strong> {parsedCheck.category}
+                      </Typography>
+                    )}
+                    {parsedCheck.maturityTier && (
+                      <Typography variant="body2">
+                        <strong>Suggested Maturity Tier:</strong> {parsedCheck.maturityTier}
+                      </Typography>
+                    )}
+                    {parsedCheck.ruleJson && (
+                      <Box>
+                        <Box display="flex" alignItems="center" style={{ gap: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Rule (json-rules-engine conditions)</strong>
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            style={{ padding: 2 }}
+                            onClick={() => handleCopyPrompt(parsedCheck.ruleJson!, 'Copied — paste into the Rule field')}
+                          >
+                            <FileCopyOutlinedIcon style={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          component="pre"
+                          style={{ fontFamily: 'monospace', fontSize: 12, overflowX: 'auto', margin: 0 }}
+                        >
+                          {parsedCheck.ruleJson}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })()}
               {item.fixPrompt && (
                 // Banner sits BETWEEN the summary and the <details>
                 // expander so the affordance is visible the moment the
