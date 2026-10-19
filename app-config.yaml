@@ -409,7 +409,7 @@ techInsights:
       initialDelay: { seconds: 20 }
       lifecycle: { timeToLive: { days: 1 } }
 
-    githubCodeScanningFactRetriever:
+    githubVulnerabilityScanFactRetriever:
       cadence: '*/5 * * * *'
       initialDelay: { seconds: 20 }
       lifecycle: { timeToLive: { days: 1 } }
