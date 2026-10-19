@@ -62,6 +62,7 @@
     "@openchoreo/backstage-plugin-permission-backend-module-openchoreo-policy": "workspace:^",
     "@openchoreo/backstage-plugin-platform-engineer-core-backend": "workspace:^",
     "@openchoreo/backstage-plugin-scaffolder-backend-module": "workspace:^",
+    "@openchoreo/backstage-plugin-tech-insights-backend-module-bitbucket": "workspace:^",
     "@openchoreo/backstage-plugin-tech-insights-backend-module-dynamic-checks": "workspace:^",
     "@openchoreo/backstage-plugin-tech-insights-backend-module-github": "workspace:^",
     "@openchoreo/openchoreo-auth": "workspace:^",

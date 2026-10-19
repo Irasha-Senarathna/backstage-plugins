@@ -75,6 +75,15 @@ integrations:
     #   apiBaseUrl: https://ghe.example.net/api/v3
     #   token: ${GHE_TOKEN}
 
+  bitbucketCloud:
+    - host: bitbucket.org
+      # API token authentication — confirmed working format (HTTP Basic,
+      # username + token) against a real Bitbucket Cloud workspace. App
+      # passwords are not used here; they stopped working entirely as of
+      # June 2026. See https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/
+      username: ${BITBUCKET_USERNAME}
+      token: ${BITBUCKET_TOKEN}
+
   # GitLab Integration (required for GitLab CI plugin)
   # Uncomment and configure in app-config.local.yaml if needed for local development
   # For production, this is configured via app-config.production.yaml with Helm-injected env vars
@@ -390,18 +399,6 @@ permission:
 # startup instead of waiting for the first cadence tick.
 techInsights:
   factRetrievers:
-    entityMetadataFactRetriever:
-      cadence: '*/5 * * * *'
-      initialDelay: { seconds: 20 }
-      lifecycle: { timeToLive: { days: 1 } }
-    entityOwnershipFactRetriever:
-      cadence: '*/5 * * * *'
-      initialDelay: { seconds: 20 }
-      lifecycle: { timeToLive: { days: 1 } }
-    techdocsFactRetriever:
-      cadence: '*/5 * * * *'
-      initialDelay: { seconds: 20 }
-      lifecycle: { timeToLive: { days: 1 } }
     # Phase 1 (Scoring & Compliance): tech-insights-backend-module-github.
     # Retrievers added via the techInsightsFactRetrieversExtensionPoint are
     # silently dropped unless also listed here — confirmed by reading
@@ -416,7 +413,15 @@ techInsights:
       cadence: '*/5 * * * *'
       initialDelay: { seconds: 20 }
       lifecycle: { timeToLive: { days: 1 } }
-  
+
+    # Phase 2: tech-insights-backend-module-bitbucket. Same "must also be
+    # listed here or it's silently dropped" rule as the GitHub retrievers
+    # above.
+    bitbucketRepoMetadataFactRetriever:
+      cadence: '*/5 * * * *'
+      initialDelay: { seconds: 20 }
+      lifecycle: { timeToLive: { days: 1 } }
+
   # factChecker.checks (titleCheck, descriptionCheck, groupOwnerCheck, techDocsCheck,
   # repoNotArchivedCheck) intentionally removed — checks are now managed via
   # tech-insights-backend-module-dynamic-checks's DB-backed registry instead of

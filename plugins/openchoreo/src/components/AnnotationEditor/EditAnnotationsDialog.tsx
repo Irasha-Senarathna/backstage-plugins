@@ -45,6 +45,11 @@ const ANNOTATION_SUGGESTIONS: AnnotationSuggestion[] = [
     placeholder: 'org/repo-name',
   },
   {
+    key: 'bitbucket.org/project-slug',
+    description: 'Bitbucket Cloud repository slug',
+    placeholder: 'workspace/repo-name',
+  },
+  {
     key: 'sonarqube.org/project-key',
     description: 'SonarQube project key',
     placeholder: 'my-project-key',
