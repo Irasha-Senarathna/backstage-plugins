@@ -50,6 +50,11 @@ backend.add(
 );
 backend.add(
   import(
+    '@openchoreo/backstage-plugin-tech-insights-backend-module-openchoreo'
+  ),
+);
+backend.add(
+  import(
     '@openchoreo/backstage-plugin-tech-insights-backend-module-dynamic-checks'
   ),
 );
