@@ -4,10 +4,14 @@ import {
 } from '@backstage/frontend-defaults';
 import assistantFeature from '@openchoreo/backstage-plugin-openchoreo-portal-assistant/alpha';
 import portalFeatureLoader from '@openchoreo/backstage-portal-app/alpha';
+import scorecardsFeatureLoader from '@openchoreo/backstage-plugin-tech-insights-scorecards/alpha';
+import maturityPlugin from '@backstage-community/plugin-tech-insights-maturity/alpha';
 import pkg from '../package.json';
 
 const ASSISTANT = '@openchoreo/backstage-plugin-openchoreo-portal-assistant';
 const SHELL = '@openchoreo/backstage-portal-app';
+const SCORECARDS = '@openchoreo/backstage-plugin-tech-insights-scorecards';
+const MATURITY = '@backstage-community/plugin-tech-insights-maturity';
 
 /**
  * This app is composed entirely by frontend feature discovery — `App.tsx` has
@@ -25,6 +29,8 @@ describe('frontend feature discovery', () => {
   it.each([
     ['the portal shell', SHELL],
     ['the assistant', ASSISTANT],
+    ['the scorecards plugin', SCORECARDS],
+    ['the maturity API plugin', MATURITY],
   ])('keeps %s a direct dependency of this package', (_label, name) => {
     // Discovery scans only the app package's own `dependencies` — not
     // devDependencies, and not transitively.
@@ -43,6 +49,23 @@ describe('frontend feature discovery', () => {
   it('resolves the assistant default export as a frontend feature', () => {
     expect((assistantFeature as any)?.$$type).toBe('@backstage/FrontendModule');
   });
+
+  // The scorecards loader carries only the scorecards plugin; the maturity
+  // plugin, which provides the API the scorecards read, is discovered on its
+  // own.
+  it.each([
+    [
+      'the scorecards plugin',
+      scorecardsFeatureLoader,
+      '@backstage/FrontendFeatureLoader',
+    ],
+    ['the maturity API plugin', maturityPlugin, '@backstage/FrontendPlugin'],
+  ])(
+    'resolves %s default export as a frontend feature',
+    (_label, feature, type) => {
+      expect((feature as any)?.$$type).toBe(type);
+    },
+  );
 
   describe('with the build-time global in place', () => {
     // `app.packages` makes the CLI generate a module that sets this global from

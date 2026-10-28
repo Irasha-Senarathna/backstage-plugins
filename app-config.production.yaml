@@ -82,6 +82,29 @@ app:
     - entity-card:gitlab/merge-requests-stats: false
     - entity-card:gitlab/people: false
     - entity-card:gitlab/languages: false
+    # tech-insights-maturity is installed only for its API; the
+    # tech-insights-scorecards page, entity tab and summary card replace its
+    # own views.
+    - page:tech-insights-maturity: false
+    - entity-content:tech-insights-maturity/maturity: false
+    - entity-content:tech-insights-maturity/summary: false
+    - entity-card:tech-insights-maturity/maturity-summary: false
+    - entity-content:tech-insights-scorecards:
+        config:
+          group: scorecards
+          # The plugin's default kinds plus the OpenChoreo kinds that
+          # collectors report facts for.
+          filter:
+            kind:
+              $in:
+                - Component
+                - API
+                - Resource
+                - System
+                - Domain
+                - Group
+                - ClusterComponentType
+                - ComponentType
 
 backend:
   # Used for enabling authentication, secret is shared by all backend plugins
@@ -146,6 +169,13 @@ techdocs:
     runIn: 'docker' # Alternatives - 'local'
   publisher:
     type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
+
+techInsights:
+  scorecards:
+    # The scorecards views use OpenChoreo's names for these catalog kinds.
+    kindLabels:
+      System: Project
+      Domain: Namespace
 
 auth:
   providers:
