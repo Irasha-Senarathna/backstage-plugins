@@ -27,6 +27,10 @@ import {
 import { hasUncoveredAllowedPath } from '../utils/pathUtils';
 import { isConstrained, resolveCapability } from '../utils/capabilityLookup';
 import type { CapabilityResource } from '@openchoreo/backstage-plugin-common';
+import {
+  dynamicCheckManagePermission,
+  dynamicCheckReadPermission,
+} from '@openchoreo/backstage-plugin-tech-insights-dynamic-checks-common';
 
 // converts capability entries to their paths, filters out entries without paths
 function extractPaths(entries: CapabilityResource[] | undefined): string[] {
@@ -46,6 +50,22 @@ const PERMISSION_PREFIX = 'openchoreo.';
 
 /** Permission name prefix for catalog entity permissions */
 const CATALOG_PERMISSION_PREFIX = 'catalog.entity.';
+
+/**
+ * Check-management permissions from the tech-insights dynamic-checks module,
+ * mapped by exact name: upstream's own `tech-insights.*` permissions (reading
+ * and running checks, which every entity's scorecard tab needs) must keep
+ * falling through to the allow-all default.
+ *
+ * The intended actions are `compliancechecks:view` and
+ * `compliancechecks:manage`, but the control plane's authz profile only
+ * returns actions it has registered (a `*` role doesn't cover unknown ones),
+ * so these map onto existing actions until it registers them.
+ */
+const TECH_INSIGHTS_PERMISSION_TO_ACTION: Record<string, string> = {
+  [dynamicCheckReadPermission.name]: 'namespace:view',
+  [dynamicCheckManagePermission.name]: 'clustercomponenttype:update',
+};
 
 /** Condition factory for catalog entity capability rule */
 const catalogConditions = {
@@ -109,6 +129,9 @@ export class OpenChoreoPermissionPolicy implements PermissionPolicy {
    * For scaffolder.task.create:
    * - Returns ALLOW if user has component:create capability for any scope
    *
+   * For tech-insights check-management permissions (dynamic checks):
+   * - Returns ALLOW/DENY on the mapped OpenChoreo action
+   *
    * For non-OpenChoreo permissions, returns ALLOW to defer to other policies.
    */
   async handle(
@@ -127,6 +150,16 @@ export class OpenChoreoPermissionPolicy implements PermissionPolicy {
     // Handle catalog.entity.* permissions for OpenChoreo-managed entities
     if (permission.name.startsWith(CATALOG_PERMISSION_PREFIX)) {
       return this.handleCatalogPermission(request, user);
+    }
+
+    const techInsightsAction =
+      TECH_INSIGHTS_PERMISSION_TO_ACTION[permission.name];
+    if (techInsightsAction) {
+      return this.handleClusterAction(
+        permission.name,
+        techInsightsAction,
+        user,
+      );
     }
 
     // Only handle OpenChoreo permissions
@@ -207,6 +240,52 @@ export class OpenChoreoPermissionPolicy implements PermissionPolicy {
     } catch (error) {
       this.logger.error(
         `Error evaluating permission ${permission.name}`,
+        error as Error,
+      );
+      return { result: AuthorizeResult.DENY };
+    }
+  }
+
+  /**
+   * Allows a basic permission when the user holds `action` anywhere not fully
+   * covered by an unconstrained deny, the same test as OpenChoreo basic
+   * permissions. Used for permissions whose subject (such as a compliance
+   * check) applies across the whole portal rather than to one namespace.
+   */
+  private async handleClusterAction(
+    permissionName: string,
+    action: string,
+    user?: PolicyQueryUser,
+  ): Promise<PolicyDecision> {
+    const userEntityRef = user?.info?.userEntityRef;
+    if (!userEntityRef) {
+      this.logger.debug(`Denying ${permissionName} - no user context`);
+      return { result: AuthorizeResult.DENY };
+    }
+
+    try {
+      const capabilities = await this.authzService.getCapabilitiesForUser(
+        userEntityRef,
+        getUserTokenFromContext(),
+      );
+      const actionCapability = resolveCapability(
+        capabilities.capabilities,
+        action,
+      );
+      const isAllowed = hasUncoveredAllowedPath(
+        extractPaths(actionCapability?.allowed),
+        unconstrainedPaths(actionCapability?.denied),
+      );
+
+      this.logger.debug(
+        `${permissionName} (${action}): ${isAllowed ? 'ALLOW' : 'DENY'}`,
+      );
+      return {
+        result: isAllowed ? AuthorizeResult.ALLOW : AuthorizeResult.DENY,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error evaluating permission ${permissionName}`,
         error as Error,
       );
       return { result: AuthorizeResult.DENY };

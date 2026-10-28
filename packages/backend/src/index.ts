@@ -40,4 +40,15 @@ backend.add(
   import('@openchoreo/backstage-plugin-openchoreo-portal-assistant-backend'),
 );
 
+// Tech Insights scorecards (not part of the published portal bundle). The
+// jsonfc module is deliberately not added: dynamic-checks calls
+// setFactCheckerFactory itself, and that extension point keeps only the last
+// factory registered.
+backend.add(import('@backstage-community/plugin-tech-insights-backend'));
+backend.add(
+  import(
+    '@openchoreo/backstage-plugin-tech-insights-backend-module-dynamic-checks'
+  ),
+);
+
 backend.start();
