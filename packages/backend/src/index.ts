@@ -46,6 +46,9 @@ backend.add(
 // factory registered.
 backend.add(import('@backstage-community/plugin-tech-insights-backend'));
 backend.add(
+  import('@openchoreo/backstage-plugin-tech-insights-backend-module-github'),
+);
+backend.add(
   import(
     '@openchoreo/backstage-plugin-tech-insights-backend-module-dynamic-checks'
   ),
