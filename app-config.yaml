@@ -539,6 +539,16 @@ techInsights:
       cadence: '0 2 * * *'
       initialDelay: { seconds: 20 }
       lifecycle: { timeToLive: { days: 7 } }
+    # CodeQL and Trivy are separate retrievers so each check reads only
+    # the scanner it names in factIds.
+    githubCodeqlFactRetriever:
+      cadence: '0 */6 * * *'
+      initialDelay: { seconds: 40 }
+      lifecycle: { timeToLive: { days: 3 } }
+    githubTrivyFactRetriever:
+      cadence: '0 */6 * * *'
+      initialDelay: { seconds: 50 }
+      lifecycle: { timeToLive: { days: 3 } }
     openchoreoComponentTypeFactRetriever:
       cadence: '0 * * * *'
       initialDelay: { seconds: 20 }

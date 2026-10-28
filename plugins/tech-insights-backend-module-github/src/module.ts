@@ -7,6 +7,8 @@ import {
   createGithubRepositoryFactRetriever,
   GITHUB_REPOSITORY_FACT_RETRIEVER_ID,
 } from './githubRepositoryFactRetriever';
+import { githubCodeqlFactRetriever } from './githubCodeqlFactRetriever';
+import { githubTrivyFactRetriever } from './githubTrivyFactRetriever';
 
 export const techInsightsModuleGithub = createBackendModule({
   pluginId: 'tech-insights',
@@ -21,6 +23,8 @@ export const techInsightsModuleGithub = createBackendModule({
         factRetrievers.addFactRetrievers({
           [GITHUB_REPOSITORY_FACT_RETRIEVER_ID]:
             createGithubRepositoryFactRetriever({ cache }),
+          githubCodeqlFactRetriever,
+          githubTrivyFactRetriever,
         });
       },
     });
