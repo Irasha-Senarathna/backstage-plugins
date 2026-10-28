@@ -3,6 +3,7 @@ import {
   CHOREO_ANNOTATIONS,
   CHOREO_LABELS,
   getRepositoryInfo,
+  getRepositoryUrl,
   ComponentTypeUtils,
   type ComponentResponse,
 } from '@openchoreo/backstage-plugin-common';
@@ -271,9 +272,10 @@ export function translateComponentToEntity(
         }),
         ...(() => {
           const repoInfo = getRepositoryInfo(component);
+          const sourceUrl = getRepositoryUrl(component);
           return {
-            ...(repoInfo.url && {
-              'backstage.io/source-location': `url:${repoInfo.url}`,
+            ...(sourceUrl && {
+              'backstage.io/source-location': `url:${sourceUrl}`,
             }),
             ...(repoInfo.branch && {
               [CHOREO_ANNOTATIONS.BRANCH]: repoInfo.branch,

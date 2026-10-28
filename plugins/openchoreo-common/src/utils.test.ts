@@ -86,26 +86,52 @@ describe('getRepositoryUrl', () => {
     );
   });
 
-  it('defaults to main branch when branch is missing', () => {
+  it('returns the repository URL when the branch is unknown', () => {
     const comp = makeComponent({
       repository: {
         url: 'https://github.com/org/repo',
         appPath: 'app',
       },
     });
-    expect(getRepositoryUrl(comp)).toBe(
-      'https://github.com/org/repo/tree/main/app',
-    );
+    expect(getRepositoryUrl(comp)).toBe('https://github.com/org/repo');
   });
 
-  it('returns just URL when path is missing', () => {
+  it('points at the branch root when path is missing', () => {
     const comp = makeComponent({
       repository: {
         url: 'https://github.com/org/repo',
         revision: { branch: 'main' },
       },
     });
-    expect(getRepositoryUrl(comp)).toBe('https://github.com/org/repo');
+    expect(getRepositoryUrl(comp)).toBe(
+      'https://github.com/org/repo/tree/main',
+    );
+  });
+
+  it('strips a .git suffix and a leading ./ from the path', () => {
+    const comp = makeComponent({
+      repository: {
+        url: 'https://github.com/org/repo.git',
+        revision: { branch: 'main' },
+        appPath: './services/api/',
+      },
+    });
+    expect(getRepositoryUrl(comp)).toBe(
+      'https://github.com/org/repo/tree/main/services/api',
+    );
+  });
+
+  it('treats a root path as the branch root', () => {
+    const comp = makeComponent({
+      repository: {
+        url: 'https://github.com/org/repo',
+        revision: { branch: 'feature/login' },
+        appPath: '/',
+      },
+    });
+    expect(getRepositoryUrl(comp)).toBe(
+      'https://github.com/org/repo/tree/feature/login',
+    );
   });
 
   it('returns undefined when no URL', () => {

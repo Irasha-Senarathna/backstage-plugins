@@ -55,8 +55,13 @@ export function getRepositoryInfo(
  * **IMPORTANT:** This function relies on `getRepositoryInfo()` and therefore assumes the same
  * workflow schema structure. See `getRepositoryInfo()` documentation for details.
  *
+ * The branch is never guessed: without one the repository URL is returned
+ * as is, so a consumer falls back to the repository's default branch.
+ *
  * @param component - The component response from the OpenChoreo API
- * @returns Full URL to the repository path at the specified branch, or base repository URL if path is not available
+ * @returns `<repo>/tree/<branch>/<path>` when the branch is known (without
+ * `/<path>` when the component sits at the repository root), the repository
+ * URL when it isn't, or undefined when there is no repository
  *
  * @example
  * ```typescript
@@ -73,12 +78,14 @@ export function getRepositoryUrl(
     return undefined;
   }
 
-  if (!path) {
-    return url;
+  const repository = url.replace(/\/+$/, '').replace(/\.git$/, '');
+  if (!branch) {
+    return repository;
   }
 
-  const separator = url.endsWith('/') ? '' : '/';
-  return `${url}${separator}tree/${branch || 'main'}/${path}`;
+  const appPath = (path ?? '').replace(/^\.?\/+/, '').replace(/\/+$/, '');
+  const tree = `${repository}/tree/${branch}`;
+  return appPath && appPath !== '.' ? `${tree}/${appPath}` : tree;
 }
 
 /**
