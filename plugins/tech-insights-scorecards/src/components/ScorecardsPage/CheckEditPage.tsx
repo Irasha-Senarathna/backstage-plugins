@@ -1,3 +1,5 @@
+import { useApiHolder } from '@backstage/core-plugin-api';
+import { checkAuthoringAssistantApiRef } from '../../api/CheckAuthoringAssistantApi';
 import type { DynamicCheck, FactSchema } from '../../api/types';
 import { useEntityLabel } from '../../kinds';
 import { CheckForm } from '../Checks/CheckForm';
@@ -28,12 +30,22 @@ export function CheckEditPage(props: CheckEditPageProps) {
   } = props;
   const entityLabel = useEntityLabel();
 
+  // Optional: only present when a host app installs a check-authoring assistant.
+  const assistant = useApiHolder().get(checkAuthoringAssistantApiRef);
+
   return (
     <FullPageView
       title={check ? `Edit check: ${check.name}` : 'New check'}
       subtitle={`Define the check, dry-run it against a sample ${entityLabel.singular}, then save or publish.`}
       onBack={onBack}
     >
+      {assistant && check && (
+        <div
+          style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}
+        >
+          <assistant.LaunchButton factSchemas={factSchemas} check={check} />
+        </div>
+      )}
       <CheckForm
         key={check?.id ?? 'new'}
         check={check}

@@ -22,6 +22,9 @@ export type { TierChipProps } from './components/TierChip';
 export { dynamicChecksApiRef } from './api/DynamicChecksApi';
 export type { DynamicChecksApi } from './api/DynamicChecksApi';
 export { DynamicChecksClient } from './api/DynamicChecksClient';
+export { checkAuthoringAssistantApiRef } from './api/CheckAuthoringAssistantApi';
+export type { CheckAuthoringAssistantApi } from './api/CheckAuthoringAssistantApi';
+export { factFieldsOf } from './api/types';
 export type {
   CheckLink,
   CheckProblem,

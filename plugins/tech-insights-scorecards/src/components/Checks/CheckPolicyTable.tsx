@@ -30,8 +30,9 @@ import {
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { useApi } from '@backstage/core-plugin-api';
+import { useApi, useApiHolder } from '@backstage/core-plugin-api';
 import { toastApiRef } from '@backstage/frontend-plugin-api';
+import { checkAuthoringAssistantApiRef } from '../../api/CheckAuthoringAssistantApi';
 import { dynamicChecksApiRef } from '../../api/DynamicChecksApi';
 import type { DynamicCheck, FactSchema } from '../../api/types';
 import { CHECK_TIERS } from '../../tierPalette';
@@ -130,6 +131,8 @@ export function CheckPolicyTable(props: CheckPolicyTableProps) {
   const api = useApi(dynamicChecksApiRef);
   const toastApi = useApi(toastApiRef);
   const tierLabel = useTierLabel();
+  // Optional: only present when a host app installs a check-authoring assistant.
+  const assistant = useApiHolder().get(checkAuthoringAssistantApiRef);
   const permissions = useCheckPermissions();
 
   const [checks, setChecks] = useState<DynamicCheck[]>([]);
@@ -365,6 +368,11 @@ export function CheckPolicyTable(props: CheckPolicyTableProps) {
             </IconButton>
           </Tooltip>
           <Box flexGrow={1} />
+          {assistant && (
+            <Box mr={1}>
+              <assistant.LaunchButton factSchemas={factSchemas} />
+            </Box>
+          )}
           <Tooltip title={permissions.canManage ? '' : NOT_ALLOWED_TOOLTIP}>
             <span>
               <Button
