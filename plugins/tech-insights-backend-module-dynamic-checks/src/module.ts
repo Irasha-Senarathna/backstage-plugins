@@ -3,6 +3,7 @@ import {
   createBackendModule,
   resolvePackagePath,
 } from '@backstage/backend-plugin-api';
+import { actionsRegistryServiceRef } from '@backstage/backend-plugin-api/alpha';
 import { catalogServiceRef } from '@backstage/plugin-catalog-node';
 import {
   techInsightsFactCheckerFactoryExtensionPoint,
@@ -21,6 +22,7 @@ import {
 import type { CheckEvaluation } from './dryRun';
 import { createDynamicChecksRouter } from './router';
 import { CheckValidator } from './validation';
+import { registerCheckActions } from './actions';
 
 const migrationsDir = resolvePackagePath(
   '@openchoreo/backstage-plugin-tech-insights-backend-module-dynamic-checks',
@@ -43,6 +45,7 @@ export const techInsightsModuleDynamicChecks = createBackendModule({
         permissionsRegistry: coreServices.permissionsRegistry,
         scheduler: coreServices.scheduler,
         catalog: catalogServiceRef,
+        actionsRegistry: actionsRegistryServiceRef,
       },
       async init({
         factCheckerFactory,
@@ -55,6 +58,7 @@ export const techInsightsModuleDynamicChecks = createBackendModule({
         permissionsRegistry,
         scheduler,
         catalog,
+        actionsRegistry,
       }) {
         permissionsRegistry.addPermissions(dynamicChecksPermissions);
 
@@ -117,6 +121,16 @@ export const techInsightsModuleDynamicChecks = createBackendModule({
             getEvaluation: () => evaluation,
           }),
         );
+
+        // The same operations as MCP tools (via mcp-actions-backend).
+        registerCheckActions({
+          actionsRegistry,
+          registry,
+          catalog,
+          auth,
+          permissions,
+          getEvaluation: () => evaluation,
+        });
       },
     });
   },
