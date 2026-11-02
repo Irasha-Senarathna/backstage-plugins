@@ -476,3 +476,193 @@ describe('AssistantChatDrawer scope plumbing', () => {
     });
   });
 });
+
+describe('AssistantChatDrawer check_authoring replies', () => {
+  it('keeps the text around the rule in an edit-check reply (no "Name:" line)', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring', checkId: 'abc-123' }}
+      />,
+    );
+    sendMessage('change visibility public to private and test on order-api');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        '**Tested on** `component:default/order-api`',
+        '- Dry-run result: **Failed**',
+        '',
+        '```json',
+        '{"conditions":{"all":[{"fact":"githubVisibility","operator":"equal","value":"private"}]}}',
+        '```',
+        '',
+        'Suggested related changes:',
+        '- Name: `Repo must be public` → `Repo must be private`',
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    expect(screen.getByText(/Tested on/)).toBeInTheDocument();
+    expect(screen.getByText(/"value": "private"/)).toBeInTheDocument();
+    expect(screen.getByText('Suggested related changes')).toBeInTheDocument();
+    expect(screen.getByText(/Repo must be private/)).toBeInTheDocument();
+  });
+
+  it('shows a copy button for a plain ``` rule and for each suggestion', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring', checkId: 'abc-123' }}
+      />,
+    );
+    sendMessage('2');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        'Edited rule:',
+        '',
+        '```',
+        '{"conditions":{"all":[{"fact":"githubVisibility","operator":"notEqual","value":"public"}]}}',
+        '```',
+        '',
+        'Suggested related changes:',
+        "- Description: `Fails if the component's GitHub repository is not public` → `Fails if the component's GitHub repository is public`",
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    expect(screen.getByText('Edited rule:')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy rule' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy suggested Description' }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "Fails if the component's GitHub repository is public",
+    );
+  });
+
+  it('gives every suggested field a copy button, whatever bullet style the model used', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring', checkId: 'abc-123' }}
+      />,
+    );
+    sendMessage('1');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        'Edited rule:',
+        '',
+        '```json',
+        '{"conditions":{"all":[{"fact":"githubRequiredApprovingReviewCount","operator":"greaterThanInclusive","value":2}]}}',
+        '```',
+        '',
+        '**Suggested related changes:**',
+        '- **Name:** `At least 1 approval` → `At least 2 approvals`',
+        '2. Description: "Fails if fewer than 1 approving review is required" -> "Fails if fewer than 2 approving reviews are required"',
+        '- solution: `Require 2 approving reviews in branch protection`.',
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    const copy = async (field: string) => {
+      fireEvent.click(screen.getByRole('button', { name: `Copy suggested ${field}` }));
+      return (navigator.clipboard.writeText as jest.Mock).mock.calls.at(-1)?.[0];
+    };
+    expect(await copy('Name')).toBe('At least 2 approvals');
+    expect(await copy('Description')).toBe(
+      'Fails if fewer than 2 approving reviews are required',
+    );
+    // "solution" is shown under the form's label, and the stray "`." is dropped.
+    expect(await copy('How to pass')).toBe('Require 2 approving reviews in branch protection');
+    // The suggestion line must not also be read as the form's own Name
+    // field — "Name:" shows once, in the suggestions block.
+    expect(screen.getAllByText(/^Name:$/)).toHaveLength(1);
+  });
+
+  it('offers a new How to pass text when the check has none', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring', checkId: 'abc-123' }}
+      />,
+    );
+    sendMessage('yes');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        'Edited rule:',
+        '',
+        '```json',
+        '{"conditions":{"all":[{"fact":"githubRequiresPullRequest","operator":"equal","value":true}]}}',
+        '```',
+        '',
+        'Suggested related changes:',
+        "- How to pass (new): `Turn on 'Require a pull request before merging' in branch protection`",
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy suggested How to pass' }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "Turn on 'Require a pull request before merging' in branch protection",
+    );
+  });
+
+  it('renders a "None" suggestion as plain text without a copy button', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring', checkId: 'abc-123' }}
+      />,
+    );
+    sendMessage('2');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        'Edited rule:',
+        '',
+        '```json',
+        '{"conditions":{"all":[{"fact":"githubVisibility","operator":"equal","value":"private"}]}}',
+        '```',
+        '',
+        'Suggested related changes:',
+        '- None — the name, description and solution still match the new rule.',
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    expect(screen.getByText(/- None — the name/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Copy suggested/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds the missing "conditions" wrapper to a bare rule', async () => {
+    render(
+      <AssistantChatDrawer
+        {...baseProps}
+        scopeOverrides={{ caseType: 'check_authoring' }}
+      />,
+    );
+    sendMessage('require branch protection');
+    await fireStreamEvent({
+      type: 'done',
+      message: [
+        '```json',
+        '{"all":[{"fact":"githubDefaultBranchProtected","operator":"equal","value":true}]}',
+        '```',
+      ].join('\n'),
+    } as StreamEvent);
+    await finishStream();
+
+    const rule = screen.getByText(/githubDefaultBranchProtected/);
+    expect(JSON.parse(rule.textContent!)).toEqual({
+      conditions: {
+        all: [
+          { fact: 'githubDefaultBranchProtected', operator: 'equal', value: true },
+        ],
+      },
+    });
+  });
+});

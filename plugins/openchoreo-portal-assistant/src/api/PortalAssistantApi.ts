@@ -28,6 +28,29 @@ export type PrefetchedLogEntry = {
 };
 
 /**
+ * One fact exposed by a registered fact retriever, forwarded to the agent
+ * in {@link ChatScope.availableFactRetrievers} so it only references facts
+ * that actually exist on this backend instead of hallucinating names.
+ * Mirrors ``FactRetrieverField`` in portal-assistant's ``agent_routes.py``.
+ */
+export type FactRetrieverField = {
+  name: string;
+  type: string;
+  description?: string;
+};
+
+/**
+ * One registered fact retriever and the facts it exposes, as forwarded in
+ * {@link ChatScope.availableFactRetrievers}. Mirrors ``FactRetriever`` in
+ * portal-assistant's ``agent_routes.py`` — the check_authoring prompt
+ * branch renders this into the "Available facts" table in perch_prompt.j2.
+ */
+export type FactRetriever = {
+  id: string;
+  facts: FactRetrieverField[];
+};
+
+/**
  * Discriminator the frontend launchers send to the agent so it can
  * layer in case-specific guidance.
  *
@@ -42,11 +65,16 @@ export type PrefetchedLogEntry = {
  *   connection can't resolve (the depended-on component is undeployed
  *   or not ready). The agent reads the binding's pending connections
  *   and explains why each named dependency is down plus how to recover.
+ * - ``check_authoring``: check-editor create/edit view launcher. The
+ *   agent drafts json-rules-engine check syntax from a plain-language
+ *   description; the user reviews it in the popup and copies it into
+ *   the Rule field themselves (no automatic insert yet).
  */
 export type ChatCaseType =
   | 'build_failure'
   | 'runtime_debug'
-  | 'dependency_pending';
+  | 'dependency_pending'
+  | 'check_authoring';
 
 export type ChatScope = {
   namespace?: string;
@@ -143,6 +171,35 @@ export type ChatScope = {
    * verbatim and never reads it itself.
    */
   componentPath?: string;
+
+  // ── Check-authoring scope fields (for caseType === 'check_authoring') ──
+
+  /**
+   * Fact retrievers registered on the tech-insights backend, forwarded so
+   * the check_authoring agent can draft ``rule.conditions`` against facts
+   * that actually exist instead of inventing names. Set by the check
+   * editor's "Ask Portal Assistant" launcher from the same ``/fact-schemas``
+   * response the form itself uses to populate the retriever picker.
+   */
+  availableFactRetrievers?: FactRetriever[];
+  /**
+   * Fact retriever ids already selected in the check-editor form. The agent
+   * treats these as a preference, not a hard restriction — it may still
+   * reach for a different retriever in ``availableFactRetrievers`` when the
+   * request needs a fact none of the selected ones provide.
+   */
+  selectedFactIds?: string[];
+  /**
+   * Set when the launcher is opened from the edit dialog of an existing
+   * check. The agent edits ``currentRule`` (the check's ``rule.conditions``
+   * as a JSON string) instead of drafting a new check, and uses the name,
+   * description and solution to suggest related text changes.
+   */
+  checkId?: string;
+  checkName?: string;
+  checkDescription?: string;
+  checkSolution?: string;
+  currentRule?: string;
 };
 
 export type ChatRequest = {

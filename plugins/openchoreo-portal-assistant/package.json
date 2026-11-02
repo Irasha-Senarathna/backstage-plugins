@@ -62,6 +62,7 @@
     "@openchoreo/backstage-plugin-openchoreo-ci": "workspace:^",
     "@openchoreo/backstage-plugin-openchoreo-observability": "workspace:^",
     "@openchoreo/backstage-plugin-react": "workspace:^",
+    "@openchoreo/backstage-plugin-tech-insights-scorecards": "workspace:^",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.1",
     "remend": "^1.0.0"

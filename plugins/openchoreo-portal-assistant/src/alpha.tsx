@@ -10,6 +10,7 @@ import {
   type PortalAssistantIntegration,
 } from '@openchoreo/backstage-plugin-react';
 import { LogRowActionBlueprint } from '@openchoreo/backstage-plugin-openchoreo-observability/alpha';
+import { checkAuthoringAssistantApiRef } from '@openchoreo/backstage-plugin-tech-insights-scorecards';
 
 import {
   portalAssistantApiRef,
@@ -19,6 +20,7 @@ import { AssistantDrawerProvider } from './components/AssistantContext/Assistant
 import { FailedBuildSnackbar } from './components/FailedBuildSnackbar/FailedBuildSnackbar';
 import { InvestigateLogButton } from './components/InvestigateLogButton/InvestigateLogButton';
 import { InvestigateDependencyButton } from './components/InvestigateDependencyButton/InvestigateDependencyButton';
+import { AskPortalAssistantButton } from './components/AskPortalAssistantButton/AskPortalAssistantButton';
 
 // Mounts the assistant drawer around the whole app so `useAssistantDrawer`
 // works from any surface that opens it.
@@ -79,6 +81,19 @@ const investigateLogAction = LogRowActionBlueprint.make({
   },
 });
 
+// "Ask Portal Assistant" next to "New check" on the scorecards check list.
+// Same composition as above: the scorecards plugin only exposes the slot and
+// owns no dependency on the assistant.
+const checkAuthoringAssistant = ApiBlueprint.make({
+  name: 'check-authoring-assistant',
+  params: defineParams =>
+    defineParams({
+      api: checkAuthoringAssistantApiRef,
+      deps: {},
+      factory: () => ({ LaunchButton: AskPortalAssistantButton }),
+    }),
+});
+
 /**
  * Everything the Portal Assistant contributes to a host app.
  *
@@ -99,6 +114,7 @@ export const assistantFeature = createFrontendModule({
     portalAssistantService,
     assistantIntegration,
     investigateLogAction,
+    checkAuthoringAssistant,
   ],
 });
 
